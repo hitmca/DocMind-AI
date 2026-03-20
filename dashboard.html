@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>DocMind AI Dashboard</title>
+
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+<style>
+
+body{
+font-family:'Segoe UI',Arial;
+background:#eef2f7;
+margin:0;
+}
+
+.header{
+background:linear-gradient(90deg,#4e73df,#1cc88a);
+color:white;
+padding:18px;
+font-size:24px;
+font-weight:600;
+text-align:center;
+}
+
+.container{
+display:flex;
+height:92vh;
+}
+
+.left{
+width:40%;
+padding:20px;
+background:white;
+border-right:1px solid #ddd;
+overflow:auto;
+}
+
+.right{
+width:60%;
+padding:20px;
+overflow:auto;
+}
+
+#messages{
+height:320px;
+overflow:auto;
+border:1px solid #ddd;
+padding:10px;
+margin-bottom:10px;
+border-radius:8px;
+background:#fafafa;
+}
+
+.message{
+padding:12px;
+margin:8px;
+border-radius:10px;
+max-width:80%;
+}
+
+.user{
+background:#4e73df;
+color:white;
+margin-left:auto;
+}
+
+.ai{
+background:#f1f1f1;
+}
+
+.card{
+background:white;
+padding:20px;
+margin-bottom:20px;
+border-radius:10px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+#network{
+height:300px;
+border:1px solid lightgray;
+margin-top:10px;
+border-radius:8px;
+}
+
+button{
+padding:6px 12px;
+border-radius:6px;
+border:none;
+background:#4e73df;
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+background:#2e59d9;
+}
+
+.doc{
+padding:6px;
+border-bottom:1px solid #eee;
+}
+
+.quick{
+margin-top:10px;
+}
+
+.quick button{
+margin:3px;
+}
+
+.copilot{
+background:#fff7e6;
+padding:10px;
+border-radius:8px;
+margin-top:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+DocMind AI – Intelligent Document Platform
+</div>
+
+<div class="container">
+
+<!-- LEFT PANEL -->
+
+<div class="left">
+
+<h3>Upload Document</h3>
+
+<input type="file" id="pdfUpload">
+<button onclick="uploadPDF()">Upload</button>
+
+<hr>
+
+<h3>Uploaded Documents</h3>
+
+<div id="docList"></div>
+
+<hr>
+
+<h3>Chat Assistant</h3>
+
+<div id="messages"></div>
+
+<input id="question" placeholder="Ask something from documents..." style="width:75%">
+<button onclick="ask()">Send</button>
+<button onclick="voice()">🎤</button>
+
+<div class="quick">
+
+<button onclick="quickAsk('Summarize this document')">Summary</button>
+<button onclick="quickAsk('What are the key points?')">Key Points</button>
+<button onclick="quickAsk('List important entities')">Entities</button>
+
+</div>
+
+<div class="copilot">
+
+<h4>🤖 AI Document Copilot</h4>
+
+<button onclick="copilot('summary')">Summarize All Docs</button>
+
+<button onclick="copilot('analysis')">Analyze Documents</button>
+
+<button onclick="agent('compare')">Compare Documents</button>
+<button onclick="agent('timeline')">Extract Timeline</button>
+<button onclick="agent('relationships')">Detect Relationships</button>
+<button onclick="agent('report')">Generate Report</button>
+
+<div id="copilotOutput" style="margin-top:10px"></div>
+
+</div>
+
+</div>
+
+<!-- RIGHT PANEL -->
+
+<div class="right">
+
+<div class="card">
+
+<h3>Knowledge Graph</h3>
+
+<div id="network"></div>
+
+</div>
+
+<div class="card">
+
+<h3>AI Insights</h3>
+
+<div id="insights"></div>
+
+</div>
+
+<div class="card">
+
+<h3>Document Tags</h3>
+
+<div id="tags"></div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+async function uploadPDF(){
+
+let file=document.getElementById("pdfUpload").files[0]
+
+let formData=new FormData()
+
+formData.append("file",file)
+
+await fetch("/upload",{method:"POST",body:formData})
+
+alert("Document Uploaded")
+
+loadGraph()
+loadInsights()
+loadTags()
+loadDocuments()
+
+}
+
+async function agent(type){
+
+let res = await fetch("/"+type)
+
+let data = await res.json()
+
+document.getElementById("copilotOutput").innerHTML = data.result
+
+}
+
+async function loadDocuments(){
+
+let res=await fetch("/documents")
+
+let data=await res.json()
+
+let html=""
+
+data.documents.forEach(doc=>{
+
+html+="<div class='doc'>📄 "+doc+"</div>"
+
+})
+
+document.getElementById("docList").innerHTML=html
+
+}
+
+async function ask(){
+
+let question=document.getElementById("question").value
+
+document.getElementById("messages").innerHTML+=
+"<div class='message user'>"+question+"</div>"
+
+let formData=new FormData()
+formData.append("question",question)
+
+try{
+
+let response=await fetch("/ask",{
+method:"POST",
+body:formData
+})
+
+let data=await response.json()
+
+let answer=data.answer || "No answer returned"
+let page=data.page || "-"
+let doc=data.document || ""
+
+document.getElementById("messages").innerHTML+=
+"<div class='message ai'>"+answer+
+"<br><small>Source: "+doc+" — Page "+page+"</small></div>"
+
+}catch(error){
+
+document.getElementById("messages").innerHTML+=
+"<div class='message ai'>Server error while answering.</div>"
+
+}
+
+document.getElementById("messages").scrollTop=
+document.getElementById("messages").scrollHeight
+
+document.getElementById("question").value=""
+
+}
+
+function quickAsk(q){
+
+document.getElementById("question").value=q
+
+ask()
+
+}
+
+function voice(){
+
+let recognition=new webkitSpeechRecognition()
+
+recognition.onresult=function(event){
+
+let text=event.results[0][0].transcript
+
+document.getElementById("question").value=text
+
+}
+
+recognition.start()
+
+}
+
+async function copilot(type){
+
+let res=await fetch("/copilot?mode="+type)
+
+let data=await res.json()
+
+document.getElementById("copilotOutput").innerHTML=data.result
+
+}
+
+async function loadGraph(){
+
+let response=await fetch("/graph")
+
+let data=await response.json()
+
+let nodes=new vis.DataSet(data.nodes)
+let edges=new vis.DataSet(data.edges)
+
+let container=document.getElementById("network")
+
+let graph={
+nodes:nodes,
+edges:edges
+}
+
+let options={
+
+nodes:{
+shape:"dot",
+size:18,
+font:{size:16}
+},
+
+edges:{
+color:"#848484",
+smooth:true
+},
+
+physics:{
+barnesHut:{
+gravitationalConstant:-12000,
+springLength:200
+}
+}
+
+}
+
+new vis.Network(container,graph,options)
+
+}
+
+async function loadInsights(){
+
+let response=await fetch("/insights")
+
+let data=await response.json()
+
+document.getElementById("insights").innerHTML=
+"Chunks: "+data.chunks+"<br>"+
+"Entities: "+data.entities+"<br>"+
+"Documents: "+data.documents
+
+}
+
+async function loadTags(){
+
+let response=await fetch("/tags")
+
+let data=await response.json()
+
+document.getElementById("tags").innerHTML=data.tags.join(", ")
+
+}
+
+loadGraph()
+loadInsights()
+loadTags()
+loadDocuments()
+
+</script>
+
+</body>
+</html>

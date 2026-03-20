@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>DocMind AI</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f6f8;
+}
+
+#chatbox{
+width:700px;
+margin:auto;
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0px 0px 10px rgba(0,0,0,0.1);
+}
+
+.message{
+padding:10px;
+margin:10px;
+border-radius:8px;
+}
+
+.user{
+background:#d1e7ff;
+text-align:right;
+}
+
+.ai{
+background:#e8e8e8;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="chatbox">
+
+<h2>DocMind AI</h2>
+
+<input type="file" id="pdfUpload">
+
+<button onclick="uploadPDF()">Upload</button>
+
+<div id="messages"></div>
+
+<input id="question" placeholder="Ask something from document..." style="width:80%">
+
+<button onclick="ask()">Send</button>
+
+<button onclick="voice()">🎤</button>
+
+</div>
+
+<script>
+
+async function uploadPDF(){
+
+let file=document.getElementById("pdfUpload").files[0];
+
+let formData=new FormData();
+
+formData.append("file",file);
+
+await fetch("/upload",{method:"POST",body:formData});
+
+alert("Document Uploaded");
+
+}
+
+async function ask(){
+
+let question=document.getElementById("question").value;
+
+document.getElementById("messages").innerHTML+=
+"<div class='message user'>"+question+"</div>";
+
+let formData=new FormData();
+
+formData.append("question",question);
+
+let response=await fetch("/ask",{method:"POST",body:formData});
+
+let data=await response.json();
+
+document.getElementById("messages").innerHTML+=
+"<div class='message ai'>"+data.answer+
+"<br><small>Source: Page "+data.page+"</small></div>";
+}
+
+function voice(){
+
+let recognition = new webkitSpeechRecognition();
+
+recognition.onresult = function(event){
+
+let text = event.results[0][0].transcript;
+
+document.getElementById("question").value = text;
+
+};
+
+recognition.start();
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>DocMind Insights</title>
+</head>
+
+<body>
+
+<h2>AI Document Insights</h2>
+
+<div id="data"></div>
+
+<script>
+
+async function loadInsights(){
+
+let response = await fetch("/insights")
+
+let data = await response.json()
+
+document.getElementById("data").innerHTML =
+"Total Chunks: "+data.chunks+"<br>"+
+"Entities Found: "+data.entities+"<br>"+
+"Documents: "+data.documents
+
+}
+
+loadInsights()
+
+</script>
+
+</body>
+
+</html>
